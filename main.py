@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+
 from models import OptimizeRequest
 from parser import interpret_note
 from validator import validate_parsed_output
+from optimizer import optimize_energy as run_optimizer
+
 
 app = FastAPI()
 
@@ -62,20 +65,58 @@ def build_directive(note_index, parsed):
 
 
 @app.post("/optimize-energy")
-def optimize_energy(request: OptimizeRequest):
+def optimize_energy_endpoint(request: OptimizeRequest):
+
+    # ---------------------------------------------------------
+    # 1. Validate that we received a full 24-hour scenario
+    # ---------------------------------------------------------
+
+    if len(request.hours) != 24:
+        raise HTTPException(
+            status_code=400,
+            detail="Exactly 24 hourly records are required."
+        )
+
+    hour_numbers = [hour.hour for hour in request.hours]
+
+    if sorted(hour_numbers) != list(range(24)):
+        raise HTTPException(
+            status_code=400,
+            detail="Hours must contain exactly 0 through 23."
+        )
+
+    # ---------------------------------------------------------
+    # 2. Interpret every operator note
+    # ---------------------------------------------------------
 
     directives = []
 
     for i, note in enumerate(request.operator_notes):
 
         parsed = interpret_note(note)
+
         parsed = validate_parsed_output(parsed)
 
         directives.append(
             build_directive(i, parsed)
         )
 
+    # ---------------------------------------------------------
+    # 3. Run PuLP optimizer AFTER all directives are collected
+    # ---------------------------------------------------------
+
+    result = run_optimizer(
+        request.hours,
+        request.battery,
+        directives
+    )
+
+    # ---------------------------------------------------------
+    # 4. Return interpretation + optimization
+    # ---------------------------------------------------------
+
     return {
         "scenario_id": request.scenario_id,
-        "directive_interpretation": directives
+        "directive_interpretation": directives,
+        "optimization": result
     }

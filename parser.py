@@ -63,24 +63,29 @@ directive_type = "solar_reduction"
 
 hours = affected hourly slots
 
-value = remaining solar output percentage as a number
+value = remaining solar fraction as a decimal between 0 and 1
 
-Example:
+Examples:
 
 "Solar output will drop to about 20% from 1 PM to 3 PM"
+-> {{"directive_type":"solar_reduction","hours":[13,14],"value":0.2}}
 
-must produce:
+"PV production will drop to about 20% between 13:00 and 15:00"
+-> {{"directive_type":"solar_reduction","hours":[13,14],"value":0.2}}
 
-{{
-    "directive_type": "solar_reduction",
-    "hours": [13, 14],
-    "value": 20
-}}
+"Panel washing from one until three will leave roughly one-fifth
+of normal solar output"
+-> {{"directive_type":"solar_reduction","hours":[13,14],"value":0.2}}
 
-IMPORTANT:
-"drop to 20%" means the remaining output is 20%.
-Do NOT convert it to 0.20.
-Do NOT interpret it as a 20 percentage-point reduction.
+"Expect an 80% reduction in rooftop solar during the 1-3 PM
+maintenance window"
+-> {{"directive_type":"solar_reduction","hours":[13,14],"value":0.2}}
+
+Important:
+- "drop TO 20%" means factor = 0.2
+- "leave one-fifth" means factor = 0.2
+- "80% reduction" means factor = 0.2
+- Always return factor as a decimal from 0 to 1.
 
 3. MINIMUM BATTERY RESERVE
 

@@ -55,9 +55,9 @@ def validate_parsed_output(parsed):
                 "solar_reduction requires a numeric value."
             )
 
-        if not 0 <= value <= 100:
+        if not 0 <= value <= 1:
             raise ValueError(
-                "Solar reduction value must be between 0 and 100."
+                "Solar reduction value must be between 0 and 1."
             )
 
     elif directive_type == "minimum_battery_reserve":

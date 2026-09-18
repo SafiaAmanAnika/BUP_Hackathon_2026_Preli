@@ -2,304 +2,314 @@ import pulp
 
 
 def optimize_energy(hours, battery, directives):
-    """
-    Optimize hourly energy scheduling using PuLP.
 
-    hours:
-        List of HourData objects.
+    # =========================================================
+    # Validate input
+    # =========================================================
 
-    battery:
-        Battery object.
+    if len(hours) != 24:
+        return {
+            "status": "infeasible",
+            "message": "Exactly 24 hours are required."
+        }
 
-    directives:
-        List of parsed directive dictionaries from build_directive().
-    """
+    hour_numbers = [h.hour for h in hours]
 
-    # ---------------------------------------------------------
+    if sorted(hour_numbers) != list(range(24)):
+        return {
+            "status": "infeasible",
+            "message": "Hours must contain exactly 0 through 23."
+        }
+
+    # =========================================================
     # Create optimization problem
-    # ---------------------------------------------------------
+    # =========================================================
 
     problem = pulp.LpProblem(
-        "Energy_Optimization",
+        "GridWise_Energy_Optimization",
         pulp.LpMinimize
     )
 
-    n = len(hours)
-
-    # ---------------------------------------------------------
+    # =========================================================
     # Decision variables
-    # ---------------------------------------------------------
+    # =========================================================
 
     grid = {
-        i: pulp.LpVariable(
-            f"grid_{i}",
+        h: pulp.LpVariable(
+            f"grid_{h}",
             lowBound=0
         )
-        for i in range(n)
+        for h in range(24)
     }
 
     charge = {
-        i: pulp.LpVariable(
-            f"charge_{i}",
+        h: pulp.LpVariable(
+            f"charge_{h}",
             lowBound=0,
             upBound=battery.max_charge_kwh_per_hour
         )
-        for i in range(n)
+        for h in range(24)
     }
 
     discharge = {
-        i: pulp.LpVariable(
-            f"discharge_{i}",
+        h: pulp.LpVariable(
+            f"discharge_{h}",
             lowBound=0,
             upBound=battery.max_discharge_kwh_per_hour
         )
-        for i in range(n)
+        for h in range(24)
     }
 
-    energy = {
-        i: pulp.LpVariable(
-            f"battery_energy_{i}",
+    battery_energy = {
+        h: pulp.LpVariable(
+            f"battery_energy_{h}",
             lowBound=battery.minimum_energy_kwh,
             upBound=battery.capacity_kwh
         )
-        for i in range(n)
+        for h in range(24)
     }
 
-    # Binary variables prevent charging and discharging
-    # at the same time.
-    charging = {
-        i: pulp.LpVariable(
-            f"is_charging_{i}",
-            cat="Binary"
-        )
-        for i in range(n)
+    # =========================================================
+    # Effective solar after solar-reduction directives
+    # =========================================================
+
+    effective_solar = {
+        h: hours[h].solar_kwh
+        for h in range(24)
     }
-
-    # ---------------------------------------------------------
-    # Objective: minimize grid electricity cost
-    # ---------------------------------------------------------
-
-    problem += pulp.lpSum(
-        grid[i] * hours[i].tariff_bdt_per_kwh
-        for i in range(n)
-    )
-
-    # ---------------------------------------------------------
-    # Battery charge/discharge constraints
-    # ---------------------------------------------------------
-
-    for i in range(n):
-
-        problem += (
-            charge[i]
-            <= battery.max_charge_kwh_per_hour * charging[i]
-        )
-
-        problem += (
-            discharge[i]
-            <= battery.max_discharge_kwh_per_hour
-            * (1 - charging[i])
-        )
-
-    # ---------------------------------------------------------
-    # Hourly energy balance
-    # ---------------------------------------------------------
-
-    for i in range(n):
-
-        solar = hours[i].solar_kwh
-
-        # Check whether a solar reduction applies to this hour.
-        for directive in directives:
-
-            if (
-                directive.get("applies", True)
-                and directive["directive_type"] == "solar_reduction"
-            ):
-
-                adjustment = directive.get(
-                    "structured_adjustment"
-                )
-
-                if adjustment and hours[i].hour in adjustment.get("hours", []):
-
-                    factor = adjustment["factor"]
-
-                    solar = (
-                        solar * factor / 100
-                    )
-
-        problem += (
-            solar
-            + grid[i]
-            + discharge[i]
-            ==
-            hours[i].demand_kwh
-            + charge[i]
-        )
-
-    # ---------------------------------------------------------
-    # Battery energy balance
-    # ---------------------------------------------------------
-
-    for i in range(n):
-
-        if i == 0:
-            previous_energy = battery.initial_energy_kwh
-        else:
-            previous_energy = energy[i - 1]
-
-        problem += (
-            energy[i]
-            ==
-            previous_energy
-            + charge[i]
-            - discharge[i]
-        )
-
-    # ---------------------------------------------------------
-    # Apply operator directives
-    # ---------------------------------------------------------
 
     for directive in directives:
 
-        if not directive.get("applies", True):
+        if not directive.get("applies", False):
+            continue
+
+        if directive["directive_type"] != "solar_reduction":
+            continue
+
+        adjustment = directive["structured_adjustment"]
+
+        factor = adjustment["factor"]
+
+        for hour in adjustment["hours"]:
+
+            if 0 <= hour <= 23:
+
+                effective_solar[hour] *= factor
+
+    # =========================================================
+    # Objective: minimize total grid electricity cost
+    # =========================================================
+
+    problem += pulp.lpSum(
+        grid[h] * hours[h].tariff_bdt_per_kwh
+        for h in range(24)
+    )
+
+    # =========================================================
+    # Energy balance
+    #
+    # solar + grid + discharge
+    # =
+    # demand + charge
+    # =========================================================
+
+    for h in range(24):
+
+        problem += (
+            effective_solar[h]
+            + grid[h]
+            + discharge[h]
+            ==
+            hours[h].demand_kwh
+            + charge[h]
+        ), f"EnergyBalance_{h}"
+
+    # =========================================================
+    # Battery transitions
+    # =========================================================
+
+    for h in range(24):
+
+        if h == 0:
+            previous_energy = battery.initial_energy_kwh
+        else:
+            previous_energy = battery_energy[h - 1]
+
+        problem += (
+            battery_energy[h]
+            ==
+            previous_energy
+            + charge[h]
+            - discharge[h]
+        ), f"BatteryBalance_{h}"
+
+    # =========================================================
+    # Final battery energy must equal initial energy
+    # =========================================================
+
+    problem += (
+        battery_energy[23]
+        == battery.initial_energy_kwh
+    ), "FinalBatteryEqualsInitial"
+
+    # =========================================================
+    # Apply operator directives
+    # =========================================================
+
+    for directive in directives:
+
+        if not directive.get("applies", False):
             continue
 
         directive_type = directive["directive_type"]
+        adjustment = directive["structured_adjustment"]
 
-        adjustment = directive.get(
-            "structured_adjustment"
-        )
+        affected_hours = adjustment.get("hours", [])
 
-        if not adjustment:
-            continue
+        for h in affected_hours:
 
-        directive_hours = adjustment.get(
-            "hours",
-            []
-        )
+            if h < 0 or h > 23:
+                continue
 
-        for hour_number in directive_hours:
+            # -------------------------------------------------
+            # Minimum battery reserve
+            # -------------------------------------------------
 
-            # Find the corresponding optimization index.
-            matching_indices = [
-                i
-                for i, hour_data in enumerate(hours)
-                if hour_data.hour == hour_number
-            ]
+            if directive_type == "minimum_battery_reserve":
 
-            for i in matching_indices:
+                minimum_energy = adjustment[
+                    "minimum_energy_kwh"
+                ]
 
-                # ---------------------------------------------
-                # Minimum battery reserve
-                # ---------------------------------------------
+                problem += (
+                    battery_energy[h]
+                    >= minimum_energy
+                ), f"MinimumReserve_{h}"
 
-                if directive_type == "minimum_battery_reserve":
+            # -------------------------------------------------
+            # No charging
+            # -------------------------------------------------
 
-                    minimum_energy = adjustment[
-                        "minimum_energy_kwh"
-                    ]
+            elif directive_type == "no_charge_window":
 
-                    problem += (
-                        energy[i]
-                        >= minimum_energy
-                    )
+                problem += (
+                    charge[h] == 0
+                ), f"NoCharge_{h}"
 
-                # ---------------------------------------------
-                # No battery charging
-                # ---------------------------------------------
+            # -------------------------------------------------
+            # No discharging
+            # -------------------------------------------------
 
-                elif directive_type == "no_charge_window":
+            elif directive_type == "no_discharge_window":
 
-                    problem += (
-                        charge[i] == 0
-                    )
+                problem += (
+                    discharge[h] == 0
+                ), f"NoDischarge_{h}"
 
-                # ---------------------------------------------
-                # No battery discharging
-                # ---------------------------------------------
+            # -------------------------------------------------
+            # Maximum grid import
+            # -------------------------------------------------
 
-                elif directive_type == "no_discharge_window":
+            elif directive_type == "max_grid_window":
 
-                    problem += (
-                        discharge[i] == 0
-                    )
+                maximum_grid = adjustment[
+                    "max_grid_kwh"
+                ]
 
-                # ---------------------------------------------
-                # Maximum grid import
-                # ---------------------------------------------
+                problem += (
+                    grid[h] <= maximum_grid
+                ), f"GridLimit_{h}"
 
-                elif directive_type == "max_grid_window":
-
-                    maximum_grid = adjustment[
-                        "max_grid_kwh"
-                    ]
-
-                    problem += (
-                        grid[i] <= maximum_grid
-                    )
-
-    # ---------------------------------------------------------
+    # =========================================================
     # Solve
-    # ---------------------------------------------------------
+    # =========================================================
 
     status = problem.solve(
         pulp.PULP_CBC_CMD(msg=False)
     )
 
     if pulp.LpStatus[status] != "Optimal":
+
         return {
             "status": "infeasible",
             "message": (
-                "No feasible energy schedule satisfies "
+                "No feasible 24-hour schedule satisfies "
                 "all constraints."
             )
         }
 
-    # ---------------------------------------------------------
-    # Build result
-    # ---------------------------------------------------------
+    # =========================================================
+    # Build hourly plan
+    # =========================================================
 
-    schedule = []
+    hourly_plan = []
 
-    for i in range(n):
+    for h in range(24):
 
-        schedule.append({
-            "hour": hours[i].hour,
-            "demand_kwh": hours[i].demand_kwh,
-            "solar_kwh": hours[i].solar_kwh,
+        grid_value = pulp.value(grid[h])
+        charge_value = pulp.value(charge[h])
+        discharge_value = pulp.value(discharge[h])
+        battery_value = pulp.value(battery_energy[h])
+
+        hourly_plan.append({
+            "hour": hours[h].hour,
+            "demand_kwh": round(
+                hours[h].demand_kwh, 4
+            ),
+            "solar_kwh": round(
+                effective_solar[h], 4
+            ),
             "grid_kwh": round(
-                pulp.value(grid[i]), 4
+                grid_value, 4
             ),
             "battery_charge_kwh": round(
-                pulp.value(charge[i]), 4
+                charge_value, 4
             ),
             "battery_discharge_kwh": round(
-                pulp.value(discharge[i]), 4
+                discharge_value, 4
             ),
             "battery_energy_kwh": round(
-                pulp.value(energy[i]), 4
+                battery_value, 4
             ),
-            "tariff_bdt_per_kwh": (
-                hours[i].tariff_bdt_per_kwh
+            "tariff_bdt_per_kwh": round(
+                hours[h].tariff_bdt_per_kwh, 4
             )
         })
 
-    total_cost = sum(
-        item["grid_kwh"]
-        * item["tariff_bdt_per_kwh"]
-        for item in schedule
+    # =========================================================
+    # Recalculate totals FROM hourly_plan
+    # =========================================================
+
+    total_grid_kwh = sum(
+        row["grid_kwh"]
+        for row in hourly_plan
     )
 
-    total_grid = sum(
-        item["grid_kwh"]
-        for item in schedule
+    total_cost_bdt = sum(
+        row["grid_kwh"]
+        * row["tariff_bdt_per_kwh"]
+        for row in hourly_plan
     )
+
+    peak_grid_kwh = max(
+        row["grid_kwh"]
+        for row in hourly_plan
+    )
+
+    # =========================================================
+    # Return result
+    # =========================================================
 
     return {
         "status": "optimal",
-        "total_cost_bdt": round(total_cost, 2),
-        "total_grid_import_kwh": round(total_grid, 4),
-        "schedule": schedule
+        "hourly_plan": hourly_plan,
+        "total_grid_kwh": round(
+            total_grid_kwh, 4
+        ),
+        "total_cost_bdt": round(
+            total_cost_bdt, 4
+        ),
+        "peak_grid_kwh": round(
+            peak_grid_kwh, 4
+        )
     }
