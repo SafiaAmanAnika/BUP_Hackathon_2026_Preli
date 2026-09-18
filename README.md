@@ -71,7 +71,7 @@ PuLP Optimization
 
 **Swagger API Documentation**
 
-<a href="https://bup-hackathon-2026-preli.onrender.com/docs">
+<a href="https://bup-hackathon-2026-preli.onrender.com">
 https://bup-hackathon-2026-preli.onrender.com/docs
 </a>
 
