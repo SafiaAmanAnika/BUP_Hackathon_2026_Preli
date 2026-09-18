@@ -1,423 +1,120 @@
-<div align="center">
+<h1 align="center">SmartGrid ENERGY OPTIMIZATION API</h1>
 
-# GRIDWISE ENERGY OPTIMIZATION API
+<p align="center">
+  <strong>Natural-language energy directives converted into optimized 24-hour energy schedules.</strong>
+</p>
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square\&logo=python\&logoColor=white)](#)
-[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?style=flat-square\&logo=fastapi\&logoColor=white)](#)
-[![PuLP](https://img.shields.io/badge/Optimization-PuLP-orange?style=flat-square)](#)
-[![Gemini](https://img.shields.io/badge/AI-Gemini-4285F4?style=flat-square\&logo=google\&logoColor=white)](#)
-[![Deployment](https://img.shields.io/badge/Deployment-Render-46E3B7?style=flat-square\&logo=render\&logoColor=black)](#)
-[![Status](https://img.shields.io/badge/Status-Deployed-brightgreen?style=flat-square)](#)
+<p align="center">
+  <a href="https://bup-hackathon-2026-preli.onrender.com/docs"><strong>Live API / Swagger Docs</strong></a>
+</p>
 
-<br>
-
-<i>GridWise is an AI-assisted energy optimization API that converts natural-language operator notes into structured energy directives and generates a cost-efficient 24-hour electricity schedule using constrained mathematical optimization.</i>
-
-<br>
-
-<a href="#overview">Overview</a>  🔷 <a href="#workflow">System Workflow</a>  🔷 <a href="#features">Core Features</a>  🔷 <a href="#architecture">Architecture</a>  🔷 <a href="#installation">Installation</a>  🔷 <a href="#api">API Integration</a>  🔷 <a href="#testing">Testing</a>  🔷 <a href="#deployment">Deployment</a>
-
-</div>
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue">
+  <img src="https://img.shields.io/badge/FastAPI-0.115.0-009688">
+  <img src="https://img.shields.io/badge/PuLP-3.3.2-orange">
+  <img src="https://img.shields.io/badge/Google%20Gemini-API-yellow">
+  <img src="https://img.shields.io/badge/Deployed-Render-purple">
+</p>
 
 ---
 
-<a name="overview"></a>
+## Navigation
+
+<p align="center">
+  <a href="#overview">Overview</a> 🔷
+  <a href="#installation">Installation</a> 🔷
+  <a href="#api-usage">API Usage</a> 🔷
+  <a href="#testing">Testing</a> 🔷
+  <a href="#project-structure">Project Structure</a> 🔷
+  <a href="#technology-stack">Technology Stack</a> 🔷
+  <a href="#deployment">Deployment</a>
+</p>
+
+---
 
 ## Overview
 
-GridWise combines **natural-language processing** with **linear programming** to optimize energy usage over a 24-hour planning horizon.
-
-Operators provide notes describing operational constraints or changes. For example:
-
-> "Solar output will drop to about 20% from 1 PM to 3 PM."
-
-The system interprets the note as a structured directive:
-
-```json
-{
-  "directive_type": "solar_reduction",
-  "hours": [13, 14],
-  "value": 0.2
-}
-```
-
-The validated directive is then incorporated into the optimization model together with:
-
-* Hourly electricity demand
-* Solar generation
-* Electricity tariffs
-* Battery capacity
-* Initial battery energy
-* Minimum battery energy
-* Battery charging limits
-* Battery discharging limits
-
-The resulting schedule satisfies the supplied operational constraints while minimizing total grid electricity cost.
-
----
-
-<a name="workflow"></a>
-
-## System Workflow
-
-```text
-┌───────────────────────────┐
-│     Operator Notes        │
-│   Natural-language text   │
-└─────────────┬─────────────┘
-              │
-              ▼
-┌───────────────────────────┐
-│     Gemini Interpreter    │
-│  Note → Energy Directive  │
-└─────────────┬─────────────┘
-              │
-              ▼
-┌───────────────────────────┐
-│       Validator           │
-│ Validate type, hours,     │
-│ values and ranges         │
-└─────────────┬─────────────┘
-              │
-              ▼
-┌───────────────────────────┐
-│    PuLP Optimization      │
-│ Cost minimization under   │
-│ energy and battery rules  │
-└─────────────┬─────────────┘
-              │
-              ▼
-┌───────────────────────────┐
-│      24-Hour Plan         │
-│ Grid / Solar / Battery    │
-│ Cost / Peak Grid          │
-└───────────────────────────┘
-```
-
-The complete request follows:
-
-```text
-Natural Language
-       ↓
-Directive Interpretation
-       ↓
-Validation
-       ↓
-Constraint Application
-       ↓
-Linear Optimization
-       ↓
-24-Hour Energy Schedule
-       ↓
-JSON Response
-```
-
----
-
-<a name="features"></a>
-
-## Core Features
-
-<details>
-<summary><b>Natural-Language Directive Interpretation</b> — Gemini-based operator note processing</summary>
-
-<br>
-
-Gemini interprets operator notes and classifies them into supported energy directives.
-
-| Directive                 | Description                                               |
-| ------------------------- | --------------------------------------------------------- |
-| `solar_reduction`         | Reduces available solar generation during specified hours |
-| `minimum_battery_reserve` | Maintains a minimum battery energy level                  |
-| `no_charge_window`        | Prevents battery charging during specified hours          |
-| `no_discharge_window`     | Prevents battery discharging during specified hours       |
-| `max_grid_window`         | Limits grid consumption during specified hours            |
-| `no_op`                   | Identifies notes with no scheduling impact                |
-
-The parser is designed to recognize variations in natural-language wording while producing a consistent structured representation.
-
-<br>
-
-</details>
-
-<details>
-<summary><b>Directive Validation</b> — Structured validation before optimization</summary>
-
-<br>
-
-Every parsed directive is validated before entering the optimization model.
-
-Validation includes:
-
-* Allowed directive type checking
-* Hour normalization
-* Hour range validation (`0`–`23`)
-* Numeric value validation
-* Solar reduction factor validation (`0`–`1`)
-* Non-negative battery reserve validation
-* Non-negative grid limit validation
-* `no_op` normalization
-
-Invalid directives are rejected rather than silently passed to the optimizer.
-
-<br>
-
-</details>
-
-<details>
-<summary><b>24-Hour Energy Optimization</b> — Constrained linear programming</summary>
-
-<br>
-
-The optimizer uses **PuLP** to formulate and solve a linear programming problem.
-
-The objective is:
-
-```text
-Minimize:
-Σ(grid energy × hourly electricity tariff)
-```
-
-Subject to:
-
-* Hourly energy balance
-* Battery energy balance
-* Battery capacity
-* Minimum battery energy
-* Maximum charging rate
-* Maximum discharging rate
-* Initial battery energy
-* Final battery energy equal to initial energy
-* Solar availability
-* Operator-defined constraints
-
-<br>
-
-</details>
-
-<details>
-<summary><b>Battery Management</b> — Hour-by-hour energy tracking</summary>
-
-<br>
-
-Battery energy is tracked throughout the complete planning horizon.
-
-For each hour:
-
-```text
-Battery Energy(t)
-=
-Battery Energy(t-1)
-+ Charge(t)
-- Discharge(t)
-```
-
-The model enforces:
-
-```text
-Minimum Energy ≤ Battery Energy ≤ Capacity
-```
-
-and:
-
-```text
-0 ≤ Charge(t) ≤ Maximum Charge Rate
-0 ≤ Discharge(t) ≤ Maximum Discharge Rate
-```
-
-The final battery energy is constrained to equal the initial battery energy.
-
-<br>
-
-</details>
-
-<details>
-<summary><b>Solar Adjustment</b> — Operational changes to solar availability</summary>
-
-<br>
-
-Solar-reduction directives modify the available solar energy before optimization.
+**GridWise** is an energy optimization API that converts operator instructions written in natural language into structured energy constraints and generates an optimized 24-hour energy schedule.
 
 For example:
 
-```json
-{
-  "hours": [13, 14],
-  "factor": 0.2
-}
-```
+> "Expect an 80% reduction in rooftop solar during the 1–3 PM maintenance window."
 
-means:
+The system interprets the instruction using **Google Gemini**, validates the resulting directive, and applies it to a **PuLP linear programming model**.
+
+### System Workflow
 
 ```text
-Effective Solar = Original Solar × 0.2
+Operator Note
+      │
+      ▼
+Google Gemini
+      │
+      ▼
+Structured Directive
+      │
+      ▼
+Validation
+      │
+      ▼
+PuLP Optimization
+      │
+      ▼
+24-Hour Energy Schedule
 ```
 
-For:
+---
 
-```text
-Hour 13 → 130 kWh
-Hour 14 → 140 kWh
+## Live Demo
+
+<p align="center">
+
+**Swagger API Documentation**
+
+<a href="https://bup-hackathon-2026-preli.onrender.com/docs">
+https://bup-hackathon-2026-preli.onrender.com/docs
+</a>
+
+</p>
+
+The deployed API can be tested directly through the Swagger interface.
+
+---
+
+## Installation
+
+<details>
+<summary><strong>1. Clone the Repository</strong></summary>
+
+```bash
+git clone https://github.com/SafiaAmanAnika/BUP_Hackathon_2026_Preli.git
+cd BUP_Hackathon_2026_Preli
 ```
-
-the optimizer receives:
-
-```text
-Hour 13 → 26 kWh
-Hour 14 → 28 kWh
-```
-
-<br>
 
 </details>
 
 <details>
-<summary><b>Optimization Results</b> — Detailed 24-hour scheduling output</summary>
-
-<br>
-
-The API returns:
-
-* Hourly energy schedule
-* Grid consumption
-* Solar availability
-* Battery charging
-* Battery discharging
-* Battery energy
-* Hourly tariff
-* Total grid consumption
-* Total electricity cost
-* Peak grid consumption
-* Optimization status
-
-<br>
-
-</details>
-
----
-
-<a name="architecture"></a>
-
-## Architecture
-
-GridWise uses a lightweight modular architecture. Each major responsibility is isolated into a separate module for easier testing and maintenance.
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│                     FastAPI API                         │
-│                       main.py                           │
-│                                                         │
-│               POST /optimize-energy                     │
-│               GET  /health                              │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-             ┌─────────────┴─────────────┐
-             │                           │
-             ▼                           ▼
-┌─────────────────────────┐   ┌─────────────────────────┐
-│       models.py         │   │        parser.py        │
-│                         │   │                         │
-│ Pydantic request models │   │ Gemini interpretation   │
-│ HourData                │   │ Natural language → JSON │
-│ Battery                 │   │                         │
-│ OptimizeRequest         │   │                         │
-└────────────┬────────────┘   └────────────┬────────────┘
-             │                             │
-             │                             ▼
-             │                  ┌─────────────────────────┐
-             │                  │      validator.py       │
-             │                  │                         │
-             │                  │ Directive validation   │
-             │                  └────────────┬────────────┘
-             │                               │
-             └───────────────┬───────────────┘
-                             ▼
-                  ┌─────────────────────────┐
-                  │      optimizer.py       │
-                  │                         │
-                  │       PuLP LP           │
-                  │ Cost minimization       │
-                  │ Energy constraints      │
-                  │ Battery constraints     │
-                  └────────────┬────────────┘
-                               │
-                               ▼
-                  ┌─────────────────────────┐
-                  │      JSON Response      │
-                  │                         │
-                  │ Directives + 24h Plan   │
-                  │ Cost + Grid Statistics  │
-                  └─────────────────────────┘
-```
-
-### Project Structure
-
-```text
-BUP_Hackathon_2026_Preli/
-│
-├── main.py                 # FastAPI application and API endpoint
-├── models.py               # Pydantic request models
-├── parser.py               # Gemini directive interpretation
-├── validator.py            # Directive validation and normalization
-├── optimizer.py             # PuLP optimization model
-│
-├── requirements.txt        # Python dependencies
-├── test_optimizer.py       # Direct optimizer test
-├── test_request.json       # API test request
-│
-├── .env                    # Local environment variables
-└── .gitignore              # Ignored files and secrets
-```
-
----
-
-<a name="installation"></a>
-
-## Installation
-
-### Prerequisites
-
-| Requirement    | Version                               |
-| -------------- | ------------------------------------- |
-| Python         | 3.10+                                 |
-| pip            | Recommended latest version            |
-| Git            | Required for repository setup         |
-| Gemini API Key | Required for directive interpretation |
-
-### Setup
+<summary><strong>2. Install Dependencies</strong></summary>
 
 ```bash
-# 1. Clone the repository
-git clone <repository-url>
-
-# 2. Enter the project directory
-cd BUP_Hackathon_2026_Preli
-
-# 3. Create a virtual environment
-python -m venv venv
-
-# 4. Activate the virtual environment
-# Windows PowerShell
-venv\Scripts\Activate.ps1
-
-# Windows Git Bash
-source venv/Scripts/activate
-
-# 5. Install dependencies
 pip install -r requirements.txt
 ```
 
-### Environment Configuration
+</details>
+
+<details>
+<summary><strong>3. Configure Gemini API</strong></summary>
 
 Create a `.env` file in the project root:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=your_api_key_here
 ```
 
-The `.env` file is excluded from version control.
+</details>
 
-### Run the API
+<details>
+<summary><strong>4. Run the API</strong></summary>
 
 ```bash
 python -m uvicorn main:app --reload
@@ -435,31 +132,15 @@ Swagger documentation:
 http://127.0.0.1:8000/docs
 ```
 
-Health check:
-
-```text
-http://127.0.0.1:8000/health
-```
-
-Expected response:
-
-```json
-{
-  "status": "ok"
-}
-```
+</details>
 
 ---
 
-<a name="api"></a>
-
-## API Integration
+## API Usage
 
 ### `GET /health`
 
-Returns the current API service status.
-
-#### Response
+Checks whether the API is running.
 
 ```json
 {
@@ -467,81 +148,72 @@ Returns the current API service status.
 }
 ```
 
----
-
 ### `POST /optimize-energy`
 
-Processes operator notes and generates an optimized 24-hour energy schedule.
+Accepts a 24-hour energy scenario together with natural-language operator instructions.
 
-#### Request
+Example:
 
 ```json
 {
-  "scenario_id": "test-one",
+  "scenario_id": "demo-001",
   "operator_notes": [
-    "Solar output will drop to about 20% from 1 PM to 3 PM."
+    "Expect an 80% reduction in rooftop solar during the 1-3 PM maintenance window."
   ],
   "hours": [
     {
-      "hour": 13,
+      "hour": 0,
       "demand_kwh": 100,
-      "solar_kwh": 130,
-      "tariff_bdt_per_kwh": 12
+      "solar_kwh": 0,
+      "tariff_bdt_per_kwh": 8
     }
   ],
   "battery": {
     "capacity_kwh": 300,
     "initial_energy_kwh": 150,
     "minimum_energy_kwh": 50,
-    "max_charge_kwh_per_hour": 50,
-    "max_discharge_kwh_per_hour": 50
+    "max_charge_kwh_per_hour": 40,
+    "max_discharge_kwh_per_hour": 40
   }
 }
 ```
 
-The API requires exactly **24 hourly records**, containing one record for every hour from `0` through `23`.
+The response provides:
 
-#### Response Structure
-
-```json
-{
-  "scenario_id": "test-one",
-  "directive_interpretation": [],
-  "optimization": {
-    "status": "optimal",
-    "hourly_plan": [],
-    "total_grid_kwh": 0,
-    "total_cost_bdt": 0,
-    "peak_grid_kwh": 0
-  }
-}
-```
-
-### Interactive Documentation
-
-FastAPI provides an interactive Swagger UI at:
-
-```text
-/docs
-```
-
-The endpoint can be tested directly through the browser without an external API client.
+* Interpreted operator directives
+* Hourly energy schedule
+* Grid usage
+* Battery charging and discharging
+* Total grid energy
+* Total electricity cost
+* Peak grid usage
 
 ---
 
-<a name="testing"></a>
+## Supported Directives
+
+| Directive                   | Example                                        |
+| --------------------------- | ---------------------------------------------- |
+| **Solar reduction**         | Reduce solar output to 20% from 1–3 PM         |
+| **Minimum battery reserve** | Keep at least 100 kWh in the battery           |
+| **No charging window**      | Do not charge from 6–8 PM                      |
+| **No discharging window**   | Do not discharge during maintenance            |
+| **Maximum grid usage**      | Limit grid usage during specified hours        |
+| **No operation**            | Informational note with no optimization impact |
+
+---
 
 ## Testing
 
-### Optimizer Testing
-
-The optimization model can be tested independently of Gemini:
+Run the optimizer test with:
 
 ```bash
 python test_optimizer.py
 ```
 
-The verified test produced:
+The test verifies that the optimization model produces a feasible 24-hour schedule and correctly applies operator constraints.
+
+Example verified result:
 
 ```text
 status: optimal
@@ -550,151 +222,31 @@ total_cost_bdt: 10222.0
 peak_grid_kwh: 140.0
 ```
 
-The test also verified the solar-reduction directive:
+The solar-reduction test also correctly changed:
 
 ```text
-Original:
-Hour 13 → 130 kWh
-Hour 14 → 140 kWh
-
-After 20% reduction factor:
-Hour 13 → 26 kWh
-Hour 14 → 28 kWh
-```
-
-### API Testing
-
-Start the application:
-
-```bash
-python -m uvicorn main:app --reload
-```
-
-Then open:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Select:
-
-```text
-POST /optimize-energy
-```
-
-and provide the test request.
-
-### Deployment Testing
-
-The deployed service was verified using:
-
-```text
-GET /health
-```
-
-and the FastAPI Swagger interface:
-
-```text
-/docs
-```
-
-The deployed application successfully started and responded to API requests.
-
----
-
-<a name="deployment"></a>
-
-## Deployment
-
-The API is deployed as a **Render Web Service**.
-
-### Render Configuration
-
-**Build Command**
-
-```bash
-pip install -r requirements.txt
-```
-
-**Start Command**
-
-```bash
-python -m uvicorn main:app --host 0.0.0.0 --port $PORT
-```
-
-### Environment Variables
-
-The deployed service requires:
-
-```text
-GEMINI_API_KEY
-```
-
-The API key is configured through Render environment variables and is not committed to the repository.
-
-### Deployment Workflow
-
-```text
-GitHub Repository
-       │
-       ▼
-Render Web Service
-       │
-       ├── Install dependencies
-       ├── Load environment variables
-       ├── Start FastAPI
-       │
-       ▼
-Public API
+Hour 13: 130 kWh → 26 kWh
+Hour 14: 140 kWh → 28 kWh
 ```
 
 ---
 
-## Optimization Model
-
-The optimization objective minimizes the cost of electricity purchased from the grid:
+## Project Structure
 
 ```text
-Minimize:
-Σ(grid[h] × tariff[h])
+BUP_Hackathon_2026_Preli/
+│
+├── main.py              # FastAPI application and endpoints
+├── models.py            # Request data models
+├── parser.py            # Gemini directive interpretation
+├── validator.py         # Directive validation
+├── optimizer.py         # PuLP optimization model
+├── test_optimizer.py    # Optimizer test
+├── test_request.json    # Sample request
+├── requirements.txt     # Python dependencies
+├── .env                 # API configuration
+└── .gitignore
 ```
-
-For every hour, the energy balance is:
-
-```text
-Solar[h] + Grid[h] + BatteryDischarge[h]
-=
-Demand[h] + BatteryCharge[h]
-```
-
-Battery evolution is:
-
-```text
-BatteryEnergy[h]
-=
-PreviousBatteryEnergy
-+ BatteryCharge[h]
-- BatteryDischarge[h]
-```
-
-The model enforces:
-
-```text
-Minimum Battery Energy
-≤
-Battery Energy
-≤
-Battery Capacity
-```
-
-and:
-
-```text
-0 ≤ Charge[h] ≤ Maximum Charge Rate
-0 ≤ Discharge[h] ≤ Maximum Discharge Rate
-```
-
-The final battery energy is constrained to equal the initial battery energy.
 
 ---
 
@@ -702,113 +254,67 @@ The final battery energy is constrained to equal the initial battery energy.
 
 | Technology        | Purpose                                   |
 | ----------------- | ----------------------------------------- |
-| **Python**        | Core application logic                    |
+| **Python**        | Core programming language                 |
 | **FastAPI**       | REST API framework                        |
-| **Pydantic**      | Request validation and data modeling      |
 | **Google Gemini** | Natural-language directive interpretation |
-| **PuLP**          | Linear programming and optimization       |
-| **Uvicorn**       | ASGI application server                   |
-| **python-dotenv** | Environment variable management           |
-| **Render**        | Cloud deployment                          |
-| **Git / GitHub**  | Version control and source hosting        |
+| **PuLP**          | Linear programming optimization           |
+| **Pydantic**      | Request validation                        |
+| **Uvicorn**       | ASGI server                               |
+| **Render**        | Deployment                                |
 
 ---
 
-## Security
+## Deployment
 
-* Gemini API credentials are stored in environment variables.
-* `.env` is excluded from version control.
-* API credentials are not hard-coded into the source code.
-* Parsed directives are validated before reaching the optimization model.
-* Incomplete or invalid 24-hour schedules are rejected.
+The application is deployed on **Render**.
 
----
+### Build Command
 
-## Supported Operator Directives
+```bash
+pip install -r requirements.txt
+```
 
-### Solar Reduction
+### Start Command
+
+```bash
+python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+### Environment Variable
 
 ```text
-PV production will drop to about 20% between 13:00 and 15:00.
+GEMINI_API_KEY
 ```
 
-Produces:
-
-```json
-{
-  "directive_type": "solar_reduction",
-  "hours": [13, 14],
-  "value": 0.2
-}
-```
-
-### Minimum Battery Reserve
+### Deployment Flow
 
 ```text
-Keep at least 120 kWh in the battery from 6 PM to 9 PM.
-```
-
-### No Charging
-
-```text
-Do not charge the battery between 2 PM and 4 PM.
-```
-
-### No Discharging
-
-```text
-Do not discharge the battery between 5 PM and 8 PM.
-```
-
-### Maximum Grid Usage
-
-```text
-Grid consumption must stay below 80 kWh from 6 PM to 9 PM.
-```
-
-### No Operation
-
-Notes with no effect on energy scheduling are classified as:
-
-```json
-{
-  "directive_type": "no_op"
-}
+GitHub Repository
+       │
+       ▼
+     Render
+       │
+       ▼
+FastAPI Application
+       │
+       ▼
+Swagger API
 ```
 
 ---
 
-## Project Status
+## Repository
 
-```text
-✓ Natural-language directive interpretation
-✓ Directive validation
-✓ Solar reduction constraints
-✓ Battery reserve constraints
-✓ No-charge constraints
-✓ No-discharge constraints
-✓ Grid consumption limits
-✓ 24-hour linear optimization
-✓ Cost minimization
-✓ API implementation
-✓ Optimizer testing
-✓ API testing
-✓ Cloud deployment
-✓ Deployment verification
-```
+**GitHub:**
+https://github.com/SafiaAmanAnika/BUP_Hackathon_2026_Preli
 
-**Status: Completed and deployed.**
+**Live API:**
+https://bup-hackathon-2026-preli.onrender.com/docs
 
 ---
 
-<div align="center">
+<p align="center">
+  <strong>🔷 SmartGrid — AI-assisted energy optimization through natural-language directives and mathematical optimization 🔷</strong>
+</p>
 
-<br>
-
-<b>GRIDWISE — AI-ASSISTED ENERGY OPTIMIZATION</b>
-
-<br><br>
-
-<i>Natural-language operational constraints translated into optimized energy schedules.</i>
-
-</div>
+---
