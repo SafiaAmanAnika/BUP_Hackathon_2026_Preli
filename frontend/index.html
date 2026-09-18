@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartGrid</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef7fb;
+            color: #17212b;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 245px;
+            min-height: 100vh;
+            background: #dceef7;
+            border-radius: 0 28px 28px 0;
+            padding: 32px 18px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #c5dbe7;
+        }
+
+        .logo {
+            font-size: 21px;
+            font-weight: 700;
+            margin: 5px 18px 42px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            font-size: 25px;
+        }
+
+        .nav {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .nav-item {
+            padding: 12px 15px;
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: white;
+        }
+
+        .nav-icon {
+            width: 18px;
+            text-align: center;
+        }
+
+        .bottom {
+            margin-top: auto;
+        }
+
+        .profile {
+            border-top: 1px solid #c7dce6;
+            padding: 20px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .profile-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #9bb8c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .profile-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .profile-plan {
+            font-size: 11px;
+            color: #71818c;
+            margin-top: 3px;
+        }
+
+        .logout {
+            border-top: 1px solid #c7dce6;
+            padding: 18px 12px;
+            font-size: 14px;
+        }
+
+        /* MAIN */
+        .main {
+            flex: 1;
+            padding: 42px 55px;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 30px;
+        }
+
+        .header p {
+            color: #71818c;
+            margin-top: 7px;
+            font-size: 14px;
+        }
+
+        .status {
+            background: #dff5e8;
+            color: #28754a;
+            padding: 9px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 22px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(50, 90, 110, 0.06);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 7px;
+        }
+
+        .card-description {
+            color: #71818c;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 145px;
+            resize: vertical;
+            border: 1px solid #d5e2e8;
+            border-radius: 14px;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: #7daec4;
+        }
+
+        button {
+            margin-top: 15px;
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 14px;
+            background: #17212b;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2d3d49;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 22px;
+        }
+
+        .metric {
+            background: #f2f8fb;
+            border-radius: 15px;
+            padding: 18px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #71818c;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .result {
+            margin-top: 22px;
+        }
+
+        .directive {
+            background: #f5f9fb;
+            border-radius: 14px;
+            padding: 15px;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+
+        .optimal {
+            color: #28754a;
+            font-weight: 700;
+        }
+
+        .table-wrapper {
+            margin-top: 22px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th,
+        td {
+            padding: 11px;
+            text-align: right;
+            border-bottom: 1px solid #edf1f3;
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+        }
+
+        th {
+            color: #71818c;
+            font-weight: 600;
+        }
+
+        #results {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                padding: 25px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="logo">
+        <span class="logo-icon">●</span>
+        SmartGrid
+    </div>
+
+    <nav class="nav">
+        <div class="nav-item active">
+            <span class="nav-icon">⌂</span>
+            Dashboard
+        </div>
+
+        <div class="nav-item">
+            <span class="nav-icon">▦</span>
+            Energy scenarios
+        </div>
+
+        <div class="nav-item">
+            <span class="nav-icon">★</span>
+            Optimization
+        </div>
+
+        <div class="nav-item">
+            <span class="nav-icon">▣</span>
+            Schedule
+        </div>
+
+        <div class="nav-item">
+            <span class="nav-icon">▤</span>
+            API documentation
+        </div>
+    </nav>
+
+    <div class="bottom">
+
+        <div class="profile">
+            <div class="profile-avatar">SG</div>
+            <div>
+                <div class="profile-name">SmartGrid</div>
+                <div class="profile-plan">Energy optimization</div>
+            </div>
+        </div>
+
+        <div class="logout">
+            ◉ &nbsp; Live system
+        </div>
+
+    </div>
+
+</aside>
+
+
+<main class="main">
+
+    <div class="header">
+        <div>
+            <h1>Energy Dashboard</h1>
+            <p>Optimize your 24-hour energy schedule using natural-language directives.</p>
+        </div>
+
+        <div class="status">● System online</div>
+    </div>
+
+
+    <div class="grid">
+
+        <section class="card">
+
+            <h2>Operator Directive</h2>
+
+            <p class="card-description">
+                Describe an energy constraint in natural language.
+            </p>
+
+            <textarea id="directive">Expect an 80% reduction in rooftop solar during the 1-3 PM maintenance window.</textarea>
+
+            <button onclick="optimize()">
+                Optimize Energy
+            </button>
+
+        </section>
+
+
+        <section class="card">
+
+            <h2>How it works</h2>
+
+            <p class="card-description">
+                SmartGrid converts operator instructions into optimization constraints.
+            </p>
+
+            <div class="directive">
+                <strong>1. Interpret</strong><br>
+                Gemini converts the instruction into a structured directive.
+            </div>
+
+            <div class="directive">
+                <strong>2. Validate</strong><br>
+                The directive is checked before entering the optimization model.
+            </div>
+
+            <div class="directive">
+                <strong>3. Optimize</strong><br>
+                PuLP finds a feasible 24-hour energy schedule.
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <section class="card result" id="results">
+
+        <h2>Optimization Results</h2>
+
+        <p class="card-description">
+            Generated 24-hour energy schedule
+        </p>
+
+        <div class="metrics">
+
+            <div class="metric">
+                <div class="metric-label">STATUS</div>
+                <div class="metric-value optimal" id="status">—</div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-label">TOTAL GRID</div>
+                <div class="metric-value" id="grid">—</div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-label">TOTAL COST</div>
+                <div class="metric-value" id="cost">—</div>
+            </div>
+
+        </div>
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Hour</th>
+                        <th>Solar</th>
+                        <th>Grid</th>
+                        <th>Charge</th>
+                        <th>Discharge</th>
+                        <th>Battery</th>
+                    </tr>
+                </thead>
+
+                <tbody id="schedule"></tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<script>
+
+async function optimize() {
+
+    const directive = document.getElementById("directive").value;
+
+    const hours = [];
+
+    for (let h = 0; h < 24; h++) {
+
+        let solar = 0;
+
+        if (h >= 7 && h <= 17) {
+            solar = Math.max(0, 150 - Math.abs(12 - h) * 15);
+        }
+
+        hours.push({
+            hour: h,
+            demand_kwh: 100 + (h >= 18 ? 40 : 0),
+            solar_kwh: solar,
+            tariff_bdt_per_kwh: h >= 18 ? 12 : 8
+        });
+    }
+
+    const request = {
+        scenario_id: "smartgrid-demo",
+        operator_notes: [directive],
+        hours: hours,
+        battery: {
+            capacity_kwh: 300,
+            initial_energy_kwh: 150,
+            minimum_energy_kwh: 50,
+            max_charge_kwh_per_hour: 40,
+            max_discharge_kwh_per_hour: 40
+        }
+    };
+
+    const button = document.querySelector("button");
+
+    button.innerText = "Optimizing...";
+    button.disabled = true;
+
+    try {
+
+        const response = await fetch("/optimize-energy", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Optimization failed.");
+        }
+
+        if (data.optimization.status !== "optimal") {
+            document.getElementById("results").style.display = "block";
+
+            document.getElementById("status").innerText =
+                data.optimization.status;
+
+            document.getElementById("grid").innerText = "—";
+            document.getElementById("cost").innerText = "—";
+
+            document.getElementById("schedule").innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center;">
+                        ${data.optimization.message || "No feasible schedule found."}
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        document.getElementById("results").style.display = "block";
+
+        document.getElementById("status").innerText =
+            data.optimization.status;
+
+        document.getElementById("grid").innerText =
+            data.optimization.total_grid_kwh + " kWh";
+
+        document.getElementById("cost").innerText =
+            "৳" + data.optimization.total_cost_bdt;
+
+        const tbody = document.getElementById("schedule");
+
+        tbody.innerHTML = "";
+
+        data.optimization.hourly_plan.forEach(row => {
+
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                <td>${row.hour}:00</td>
+                <td>${row.solar_kwh}</td>
+                <td>${row.grid_kwh}</td>
+                <td>${row.battery_charge_kwh}</td>
+                <td>${row.battery_discharge_kwh}</td>
+                <td>${row.battery_energy_kwh}</td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById("results")
+            .scrollIntoView({ behavior: "smooth" });
+
+    } catch (error) {
+
+        alert(error.message);
+
+    } finally {
+
+        button.innerText = "Optimize Energy";
+        button.disabled = false;
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>

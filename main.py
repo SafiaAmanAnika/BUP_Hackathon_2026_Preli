@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
-
+from fastapi.responses import FileResponse
+from pathlib import Path
 from models import OptimizeRequest
 from parser import interpret_note
 from validator import validate_parsed_output
@@ -7,6 +8,13 @@ from optimizer import optimize_energy as run_optimizer
 
 
 app = FastAPI()
+
+
+@app.get("/")
+def home():
+    return FileResponse(
+        Path(__file__).parent / "frontend" / "index.html"
+    )
 
 
 @app.get("/health")
