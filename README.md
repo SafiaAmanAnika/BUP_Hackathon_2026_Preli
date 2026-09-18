@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://bup-hackathon-2026-preli.onrender.com/docs"><strong>Live API / Swagger Docs</strong></a>
+  <a href="https://bup-hackathon-2026-preli.onrender.com"><strong>Live API / Swagger Docs</strong></a>
 </p>
 
 <p align="center">
@@ -309,7 +309,7 @@ Swagger API
 https://github.com/SafiaAmanAnika/BUP_Hackathon_2026_Preli
 
 **Live API:**
-https://bup-hackathon-2026-preli.onrender.com/docs
+https://bup-hackathon-2026-preli.onrender.com
 
 ---
 
